@@ -1,5 +1,6 @@
 package com.alexandre.splittrip.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -18,6 +19,7 @@ public class Expense {
 
     private LocalDateTime expenseDate = LocalDateTime.now();
 
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "trip_id", nullable = false)
     private Trip trip;

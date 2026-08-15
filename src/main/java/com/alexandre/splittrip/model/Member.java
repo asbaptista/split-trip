@@ -1,5 +1,6 @@
 package com.alexandre.splittrip.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 @Entity
@@ -11,6 +12,7 @@ public class Member {
 
     private String name;
 
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "trip_id", nullable = false)
     private Trip trip;

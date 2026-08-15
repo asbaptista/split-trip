@@ -1,5 +1,6 @@
 package com.alexandre.splittrip.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 
@@ -10,6 +11,7 @@ public class ExpenseSplit {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "expense_id", nullable = false)
     private Expense expense;
