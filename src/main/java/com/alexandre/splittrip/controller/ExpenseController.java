@@ -7,6 +7,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/expenses")
 public class ExpenseController {
@@ -28,4 +30,13 @@ public class ExpenseController {
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(newExpense);
     }
+
+    @GetMapping("/trip/{tripId}")
+    public ResponseEntity<List<Expense>> getTripExpenses(@PathVariable Long tripId) {
+        List<Expense> expenses = expenseService.getExpensesByTrip(tripId);
+        return ResponseEntity.ok(expenses);
+
+    }
+
+
 }

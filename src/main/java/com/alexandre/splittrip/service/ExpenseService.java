@@ -92,4 +92,10 @@ public class ExpenseService {
 
         return savedExpense;
     }
+
+    public List<Expense> getExpensesByTrip(Long tripId) {
+        return expenseRepository.findByTripIdOrderByExpenseDateDesc(tripId);
+    }
+
+
 }
