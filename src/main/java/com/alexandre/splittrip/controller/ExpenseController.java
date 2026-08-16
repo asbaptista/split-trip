@@ -1,6 +1,8 @@
 package com.alexandre.splittrip.controller;
 
 import com.alexandre.splittrip.dto.AddExpenseRequest;
+import com.alexandre.splittrip.dto.MemberBalanceResponse;
+import com.alexandre.splittrip.dto.TransferInstruction;
 import com.alexandre.splittrip.model.Expense;
 import com.alexandre.splittrip.service.ExpenseService;
 import org.springframework.http.HttpStatus;
@@ -38,5 +40,17 @@ public class ExpenseController {
 
     }
 
+    @GetMapping("/trip/{tripId}/balances")
+    public ResponseEntity<List<MemberBalanceResponse>> getTripBalances(@PathVariable Long tripId) {
+        List<MemberBalanceResponse> balances = expenseService.calculateBalances(tripId);
+        return ResponseEntity.ok(balances);
+    }
+
+
+    @GetMapping("/trip/{tripId}/settlements")
+    public ResponseEntity<List<TransferInstruction>> getTripSettlements(@PathVariable Long tripId) {
+        List<TransferInstruction> settlements = expenseService.calculateSettlements(tripId);
+        return ResponseEntity.ok(settlements);
+    }
 
 }

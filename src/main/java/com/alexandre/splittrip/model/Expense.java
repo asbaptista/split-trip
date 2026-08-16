@@ -45,4 +45,6 @@ public class Expense {
     public void setTrip(Trip trip) { this.trip = trip; }
     public Member getPaidBy() { return paidBy; }
     public void setPaidBy(Member paidBy) { this.paidBy = paidBy; }
+    public List<ExpenseSplit> getSplits() {return splits;}
+    public void setSplits(List<ExpenseSplit> splits) {this.splits = splits;}
 }
