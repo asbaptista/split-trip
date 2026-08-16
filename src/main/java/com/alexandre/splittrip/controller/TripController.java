@@ -23,7 +23,7 @@ public class TripController {
     @PostMapping
     public ResponseEntity<Trip> createTrip(@RequestBody CreateTripRequest request) {
         Trip newTrip = tripService.createTrip(request.getTripName());
-        // Devolvem o código HTTP 201 CREATED (boa prática REST para criação de recursos)
+        // Devolvem o código HTTP 201 CREATED
         return ResponseEntity.status(HttpStatus.CREATED).body(newTrip);
     }
 
@@ -32,5 +32,12 @@ public class TripController {
     public ResponseEntity<Member> joinTrip(@RequestBody JoinTripRequest request) {
         Member newMember = tripService.joinTrip(request.getRoomCode(), request.getMemberName());
         return ResponseEntity.status(HttpStatus.CREATED).body(newMember);
+    }
+
+    // Endpoint: GET /api/trips/{roomCode}
+    @GetMapping("/{roomCode}")
+    public ResponseEntity<Trip> getTripDetails(@PathVariable String roomCode) {
+        Trip trip = tripService.getTripByRoomCode(roomCode);
+        return ResponseEntity.ok(trip); // Devolve HTTP 200 (OK) com os dados da viagem
     }
 }

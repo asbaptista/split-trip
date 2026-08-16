@@ -20,7 +20,7 @@ public class TripService {
         this.memberRepository = memberRepository;
     }
 
-    public Trip createTrip(String tripName){
+    public Trip createTrip(String tripName) {
         Trip newTrip = new Trip();
         newTrip.setName(tripName);
 
@@ -50,4 +50,11 @@ public class TripService {
     }
 
 
- }
+    public Trip getTripByRoomCode(String roomCode) {
+        return tripRepository.findByRoomCode(roomCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Viagem com o código " + roomCode + " não encontrada!"));
+    }
+
+
+
+}
