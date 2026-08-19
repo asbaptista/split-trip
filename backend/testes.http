@@ -1,0 +1,30 @@
+POST http://localhost:8080/api/trips
+Content-Type: application/json
+
+{
+  "tripName": "Roadtrip Torres Vedras - Albufeira"
+}
+POST http://localhost:8080/api/trips/join
+Content-Type: application/json
+
+{
+"roomCode": "COLA_AQUI_O_CODIGO",
+"memberName": "Alexandre"
+}
+POST http://localhost:8080/api/trips/join
+Content-Type: application/json
+
+{
+"roomCode": "COLA_AQUI_O_CODIGO",
+"memberName": "Namorada"
+}
+POST http://localhost:8080/api/expenses
+Content-Type: application/json
+
+{
+"tripId": 1,
+"paidById": 1,
+"description": "Gasóleo e Portagens do Astra",
+"totalAmount": 55.50,
+"involvedMemberIds": [1, 2]
+}
