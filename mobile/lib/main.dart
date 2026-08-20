@@ -1,3 +1,4 @@
+import 'screens/home_screen.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -15,11 +16,7 @@ class SplitTripApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
       ),
-      home: const Scaffold(
-        body: Center(
-          child: Text('Motor Flutter Pronto!', style: TextStyle(fontSize: 24)),
-        ),
-      ),
+      home: const HomeScreen(),
     );
   }
 }
