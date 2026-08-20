@@ -6,7 +6,8 @@ import '../models/expense.dart';
 import '../models/member_balance.dart';
 import '../models/transfer_instruction.dart';
 import 'home_screen.dart';
-// import 'add_expense_screen.dart';
+import 'add_expense_screen.dart';
+
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -182,17 +183,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // No próximo passo vamos abrir aqui o ecrã de Nova Despesa
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Em breve: Nova Despesa!')),
-          );
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Despesa'),
-        backgroundColor: Colors.teal,
-        foregroundColor: Colors.white,
-      ),
+     onPressed: () async {
+       if (_trip == null) return;
+
+       final session = await SessionManager.getSession();
+       final currentMemberId = session?['memberId'] as int;
+
+       // Abre o ecrã de Nova Despesa e fica à espera do resultado
+       final despesaAdicionada = await Navigator.of(context).push(
+         MaterialPageRoute(
+           builder: (_) => AddExpenseScreen(
+             trip: _trip!,
+             currentMemberId: currentMemberId,
+           ),
+         ),
+       );
+
+       
+       if (despesaAdicionada == true) {
+         _loadDashboardData();
+       }
+     },
+     icon: const Icon(Icons.add),
+     label: const Text('Despesa'),
+     backgroundColor: Colors.teal,
+     foregroundColor: Colors.white,
+   ),
     );
   }
 }
