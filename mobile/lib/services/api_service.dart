@@ -9,9 +9,7 @@ import '../models/member_balance.dart';
 import '../models/transfer_instruction.dart';
 
 class ApiService {
-  static const String baseUrl =
-      'https://splittrip-api-a16f19f31572.herokuapp.com/api';
-  // TRIPS AND MEMBERS
+  static const String baseUrl = 'https://splittrip-api-a16f19f31572.herokuapp.com/api';  // TRIPS AND MEMBERS
 
   Future<Trip> createTrip(String tripName) async {
     final response = await http.post(
