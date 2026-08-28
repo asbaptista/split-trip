@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import '../services/api_service.dart';
 import '../services/session_manager.dart';
 import '../models/trip.dart';
@@ -7,7 +8,6 @@ import '../models/member_balance.dart';
 import '../models/transfer_instruction.dart';
 import 'home_screen.dart';
 import 'add_expense_screen.dart';
-
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -32,25 +32,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _loadDashboardData();
   }
 
+  void _shareTripCode(String roomCode, String tripName) {
+    Share.share(
+      'Junta-te à viagem "$tripName" no SplitTrip!\n\n'
+      'Código da sala: $roomCode\n\n'
+      'Abre no browser: https://app.netlify.com/drop (ou usa a app)',
+      subject: 'Código da Viagem SplitTrip',
+    );
+  }
+
   Future<void> _loadDashboardData() async {
     setState(() => _isLoading = true);
     try {
-      // er a sessão guardada
       final session = await SessionManager.getSession();
       if (session == null) throw Exception("Sessão não encontrada");
 
-      _currentMemberName = session['memberName'];
+      _currentMemberName = session['memberName'] ?? '';
       final roomCode = session['roomCode'];
 
-      // Ir buscar os detalhes da Viagem (para sabermos o tripId real)
       _trip = await _apiService.getTripDetails(roomCode);
 
-      // Ir buscar as contas todas em simultâneo para ser mais rápido
       final results = await Future.wait([
         _apiService.getTripExpenses(_trip!.id),
         _apiService.getBalances(_trip!.id),
         _apiService.getSettlements(_trip!.id),
       ]);
+
+      if (!mounted) return;
 
       setState(() {
         _expenses = results[0] as List<Expense>;
@@ -58,26 +66,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _settlements = results[2] as List<TransferInstruction>;
       });
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Erro ao carregar dados: $e')));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao carregar dados: $e')),
+      );
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _logout() async {
     await SessionManager.logout();
     if (!mounted) return;
-    Navigator.of(
-      context,
-    ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const HomeScreen()),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     return Scaffold(
@@ -98,28 +109,69 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16.0),
           children: [
-            // CÓDIGO DA SALA
-            Center(
-              child: Text(
-                'Código da Sala: ${_trip?.roomCode}',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.teal,
+            // CÓDIGO DA SALA E BOTÃO DE PARTILHA
+            if (_trip != null)
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.teal.shade200),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Código: ',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.black54,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        _trip!.roomCode,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.teal,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.share, color: Colors.teal),
+                        tooltip: 'Partilhar código',
+                        onPressed: () => _shareTripCode(
+                          _trip!.roomCode,
+                          _trip!.name,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
             const SizedBox(height: 24),
 
-            // SECÇÃO: QUEM PAGA A QUEM (MBWay)
+            // AJUSTE DE CONTAS (QUEM PAGA A QUEM)
             const Text(
               'Ajuste de Contas',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             _settlements.isEmpty
-                ? const Text(
-                    'As contas estão certas! Ninguém deve a ninguém. 🎉',
+                ? const Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Text(
+                        'As contas estão certas! Ninguém deve a ninguém. 🎉',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                    ),
                   )
                 : Column(
                     children: _settlements
@@ -130,14 +182,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 Icons.sync_alt,
                                 color: Colors.orange,
                               ),
-                              title: Text(
-                                '${s.senderName} paga a ${s.receiverName}',
-                              ),
+                              title: Text('${s.senderName} paga a ${s.receiverName}'),
                               trailing: Text(
                                 '${s.amount.toStringAsFixed(2)} €',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
+                                  color: Colors.orange,
                                 ),
                               ),
                             ),
@@ -148,14 +199,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             const SizedBox(height: 24),
 
-            // SECÇÃO: FEED DE DESPESAS
+            // HISTÓRICO DE DESPESAS
             const Text(
               'Histórico de Despesas',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             _expenses.isEmpty
-                ? const Text('Ainda não há despesas registadas.')
+                ? const Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Text('Ainda não há despesas registadas.'),
+                    ),
+                  )
                 : Column(
                     children: _expenses
                         .map(
@@ -183,32 +239,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-     onPressed: () async {
-       if (_trip == null) return;
+        onPressed: () async {
+          if (_trip == null) return;
 
-       final session = await SessionManager.getSession();
-       final currentMemberId = session?['memberId'] as int;
+          final session = await SessionManager.getSession();
+          final currentMemberId = (session?['memberId'] ?? 0) as int;
 
-       // Abre o ecrã de Nova Despesa e fica à espera do resultado
-       final despesaAdicionada = await Navigator.of(context).push(
-         MaterialPageRoute(
-           builder: (_) => AddExpenseScreen(
-             trip: _trip!,
-             currentMemberId: currentMemberId,
-           ),
-         ),
-       );
+          final despesaAdicionada = await Navigator.of(context).push<bool>(
+            MaterialPageRoute(
+              builder: (_) => AddExpenseScreen(
+                trip: _trip!,
+                currentMemberId: currentMemberId,
+              ),
+            ),
+          );
 
-       
-       if (despesaAdicionada == true) {
-         _loadDashboardData();
-       }
-     },
-     icon: const Icon(Icons.add),
-     label: const Text('Despesa'),
-     backgroundColor: Colors.teal,
-     foregroundColor: Colors.white,
-   ),
+          if (despesaAdicionada == true) {
+            _loadDashboardData();
+          }
+        },
+        icon: const Icon(Icons.add),
+        label: const Text('Despesa'),
+        backgroundColor: Colors.teal,
+        foregroundColor: Colors.white,
+      ),
     );
   }
 }
