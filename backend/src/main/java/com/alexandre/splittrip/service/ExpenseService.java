@@ -1,11 +1,10 @@
 package com.alexandre.splittrip.service;
 
+import com.alexandre.splittrip.dto.AddExpenseRequest;
+import com.alexandre.splittrip.dto.MemberBalanceResponse;
 import com.alexandre.splittrip.dto.TransferInstruction;
-import com.alexandre.splittrip.model.Expense;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.alexandre.splittrip.exception.ResourceNotFoundException;
+import com.alexandre.splittrip.model.Expense;
 import com.alexandre.splittrip.model.ExpenseSplit;
 import com.alexandre.splittrip.model.Member;
 import com.alexandre.splittrip.model.Trip;
@@ -13,10 +12,12 @@ import com.alexandre.splittrip.repository.ExpenseRepository;
 import com.alexandre.splittrip.repository.ExpenseSplitRepository;
 import com.alexandre.splittrip.repository.MemberRepository;
 import com.alexandre.splittrip.repository.TripRepository;
-import com.alexandre.splittrip.dto.MemberBalanceResponse;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -41,32 +42,37 @@ public class ExpenseService {
     }
 
     @Transactional
-    public Expense addExpense(Long tripId, Long paidById, String description, BigDecimal totalAmount, List<Long> involvedMemberIds) {
-        if (involvedMemberIds.isEmpty()) {
+    public Expense addExpense(AddExpenseRequest request) {
+        if (request.getSplitAmongMemberIds() == null || request.getSplitAmongMemberIds().isEmpty()) {
             throw new ResourceNotFoundException("A despesa tem de ser dividida por pelo menos uma pessoa.");
         }
 
-        Trip trip = tripRepository.findById(tripId)
+        Trip trip = tripRepository.findById(request.getTripId())
                 .orElseThrow(() -> new ResourceNotFoundException("Viagem não encontrada"));
 
-        Member paidBy = memberRepository.findById(paidById)
+        Member paidBy = memberRepository.findById(request.getPaidById())
                 .orElseThrow(() -> new ResourceNotFoundException("Membro pagador não encontrado"));
 
         // 1. Criar e guardar a Despesa
         Expense expense = new Expense();
         expense.setTrip(trip);
         expense.setPaidBy(paidBy);
-        expense.setDescription(description);
-        expense.setTotalAmount(totalAmount);
+        expense.setDescription(request.getDescription());
+        expense.setTotalAmount(request.getTotalAmount());
+        expense.setExpenseDate(LocalDateTime.now());
         Expense savedExpense = expenseRepository.save(expense);
 
         // 2. Procurar todos os membros envolvidos numa só query SQL
-        List<Member> involvedMembers = memberRepository.findAllById(involvedMemberIds);
+        List<Member> involvedMembers = memberRepository.findAllById(request.getSplitAmongMemberIds());
+
+        if (involvedMembers.size() != request.getSplitAmongMemberIds().size()) {
+            throw new ResourceNotFoundException("Um ou mais membros selecionados não foram encontrados.");
+        }
 
         // 3. Matemática com acerto de cêntimos
         BigDecimal numberOfPeople = new BigDecimal(involvedMembers.size());
-        BigDecimal baseSplit = totalAmount.divide(numberOfPeople, 2, RoundingMode.FLOOR);
-        BigDecimal remainder = totalAmount.subtract(baseSplit.multiply(numberOfPeople));
+        BigDecimal baseSplit = request.getTotalAmount().divide(numberOfPeople, 2, RoundingMode.FLOOR);
+        BigDecimal remainder = request.getTotalAmount().subtract(baseSplit.multiply(numberOfPeople));
 
         // 4. Lógica de atribuição do resto dos cêntimos
         boolean payerIsInvolved = involvedMembers.stream()
@@ -100,19 +106,16 @@ public class ExpenseService {
         return expenseRepository.findByTripIdOrderByExpenseDateDesc(tripId);
     }
 
-    public  List<MemberBalanceResponse> calculateBalances(Long tripId){
-        //verificar de existe
+    public List<MemberBalanceResponse> calculateBalances(Long tripId) {
         tripRepository.findById(tripId)
                 .orElseThrow(() -> new ResourceNotFoundException("Viagem não encontrada"));
 
         List<Member> members = memberRepository.findByTripId(tripId);
         List<Expense> expenses = expenseRepository.findByTripIdOrderByExpenseDateDesc(tripId);
 
-        //criar mapa
         Map<Long, BigDecimal> paidMap = new HashMap<>();
         Map<Long, BigDecimal> owedMap = new HashMap<>();
 
-        //meter membros
         for (Member m : members) {
             paidMap.put(m.getId(), BigDecimal.ZERO);
             owedMap.put(m.getId(), BigDecimal.ZERO);
@@ -121,21 +124,18 @@ public class ExpenseService {
         for (Expense expense : expenses) {
             Long payerId = expense.getPaidBy().getId();
 
-            //acumula o valor pago por quem pagou
             if (paidMap.containsKey(payerId)) {
                 paidMap.put(payerId, paidMap.get(payerId).add(expense.getTotalAmount()));
-
             }
-            //acumula divida de cada membro envolvido na despesa
-            for (ExpenseSplit split : expense.getSplits()){
-                Long memberId = split.getMember().getId();
-                if (owedMap.containsKey(memberId)){
-                    owedMap.put(memberId, owedMap.get(memberId).add(split.getOwedAmount()));
 
+            for (ExpenseSplit split : expense.getSplits()) {
+                Long memberId = split.getMember().getId();
+                if (owedMap.containsKey(memberId)) {
+                    owedMap.put(memberId, owedMap.get(memberId).add(split.getOwedAmount()));
                 }
             }
         }
-        //conclusao de calculos
+
         List<MemberBalanceResponse> balances = new ArrayList<>();
         for (Member member : members) {
             BigDecimal totalPaid = paidMap.getOrDefault(member.getId(), BigDecimal.ZERO);
@@ -153,14 +153,13 @@ public class ExpenseService {
         return balances;
     }
 
-
-    public List<TransferInstruction> calculateSettlements(Long tripId){
+    public List<TransferInstruction> calculateSettlements(Long tripId) {
         List<MemberBalanceResponse> balances = calculateBalances(tripId);
 
         List<MemberBalanceResponse> debtors = new ArrayList<>();
         List<MemberBalanceResponse> creditors = new ArrayList<>();
 
-        for(MemberBalanceResponse b : balances){
+        for (MemberBalanceResponse b : balances) {
             if (b.balance().compareTo(BigDecimal.ZERO) < 0) {
                 debtors.add(b);
             } else if (b.balance().compareTo(BigDecimal.ZERO) > 0) {
@@ -169,8 +168,8 @@ public class ExpenseService {
         }
 
         List<TransferInstruction> transfers = new ArrayList<>();
-        int i = 0; // Ponteiro dos devedores
-        int j = 0; // Ponteiro dos credores
+        int i = 0;
+        int j = 0;
 
         while (i < debtors.size() && j < creditors.size()) {
             MemberBalanceResponse debtor = debtors.get(i);
@@ -188,7 +187,6 @@ public class ExpenseService {
                     creditor.memberName(),
                     transferAmount
             ));
-
 
             BigDecimal newDebtBalance = debtAmount.subtract(transferAmount);
             BigDecimal newCreditBalance = creditAmount.subtract(transferAmount);
@@ -208,5 +206,4 @@ public class ExpenseService {
 
         return transfers;
     }
-    }
-
+}

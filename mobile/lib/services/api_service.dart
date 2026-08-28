@@ -9,7 +9,8 @@ import '../models/member_balance.dart';
 import '../models/transfer_instruction.dart';
 
 class ApiService {
-  static const String baseUrl = 'https://splittrip-api-a16f19f31572.herokuapp.com/api';  // TRIPS AND MEMBERS
+  static const String baseUrl =
+      'https://splittrip-api-a16f19f31572.herokuapp.com/api'; // TRIPS AND MEMBERS
 
   Future<Trip> createTrip(String tripName) async {
     final response = await http.post(
@@ -56,7 +57,7 @@ class ApiService {
     int paidById,
     String description,
     double totalAmount,
-    List<int> involvedMemberIds,
+    List<int> splitAmongMemberIds,
   ) async {
     final response = await http.post(
       Uri.parse('$baseUrl/expenses'),
@@ -66,7 +67,7 @@ class ApiService {
         'paidById': paidById,
         'description': description,
         'totalAmount': totalAmount,
-        'involvedMemberIds': involvedMemberIds,
+        'splitAmongMemberIds': splitAmongMemberIds,
       }),
     );
 

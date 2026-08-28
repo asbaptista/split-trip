@@ -22,15 +22,9 @@ public class ExpenseController {
     }
 
     @PostMapping
-    public ResponseEntity<Expense> addExpense(@RequestBody AddExpenseRequest request) {
-        Expense newExpense = expenseService.addExpense(
-                request.getTripId(),
-                request.getPaidById(),
-                request.getDescription(),
-                request.getTotalAmount(),
-                request.getInvolvedMemberIds()
-        );
-        return ResponseEntity.status(HttpStatus.CREATED).body(newExpense);
+    @ResponseStatus(HttpStatus.CREATED)
+    public Expense addExpense(@RequestBody AddExpenseRequest request) {
+        return expenseService.addExpense(request);
     }
 
     @GetMapping("/trip/{tripId}")

@@ -7,9 +7,9 @@ class AddExpenseScreen extends StatefulWidget {
   final int currentMemberId; // Para selecionarmos logo quem está a usar a app
 
   const AddExpenseScreen({
-    super.key, 
-    required this.trip, 
-    required this.currentMemberId
+    super.key,
+    required this.trip,
+    required this.currentMemberId,
   });
 
   @override
@@ -18,12 +18,13 @@ class AddExpenseScreen extends StatefulWidget {
 
 class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final ApiService _apiService = ApiService();
-  
+
   final _formKey = GlobalKey<FormState>();
   final _descriptionController = TextEditingController();
   final _amountController = TextEditingController();
-  
+
   int? _selectedPayerId;
+  List<int> _selectedMemberIds = [];
   bool _isLoading = false;
 
   @override
@@ -31,11 +32,25 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     super.initState();
     // Por defeito, quem está a usar a app é quem pagou a conta
     _selectedPayerId = widget.currentMemberId;
+    //Por defeito, seleciona TODOS os membros da viagem
+    _selectedMemberIds = widget.trip.members.map((m) => m.id).toList();
   }
 
   Future<void> _saveExpense() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedPayerId == null) return;
+
+    if (_selectedMemberIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Seleciona pelo menos uma pessoa para dividir a despesa.',
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -45,25 +60,24 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       final amountText = _amountController.text.replaceAll(',', '.');
       final amount = double.parse(amountText);
 
-      // Vamos dividir por todos os membros da viagem por defeito
-      final involvedMemberIds = widget.trip.members.map((m) => m.id).toList();
-
       await _apiService.addExpense(
         widget.trip.id,
         _selectedPayerId!,
         description,
         amount,
-        involvedMemberIds,
+        _selectedMemberIds,
       );
 
       if (!mounted) return;
-      
+
       // Se correu tudo bem, fecha o ecrã e devolve "true" para o Dashboard saber que tem de atualizar
       Navigator.of(context).pop(true);
-      
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao guardar despesa: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Erro ao guardar despesa: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -73,10 +87,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Nova Despesa'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Nova Despesa'), centerTitle: true),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -94,22 +105,27 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.description),
                       ),
-                      validator: (value) => value!.isEmpty ? 'Insere uma descrição' : null,
+                      validator: (value) =>
+                          value!.isEmpty ? 'Insere uma descrição' : null,
                     ),
                     const SizedBox(height: 16),
 
                     // Valor
                     TextFormField(
                       controller: _amountController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: const InputDecoration(
                         labelText: 'Valor Total (€)',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.euro),
                       ),
                       validator: (value) {
-                        if (value == null || value.isEmpty) return 'Insere o valor';
-                        if (double.tryParse(value.replaceAll(',', '.')) == null) {
+                        if (value == null || value.isEmpty)
+                          return 'Insere o valor';
+                        if (double.tryParse(value.replaceAll(',', '.')) ==
+                            null) {
                           return 'Valor inválido';
                         }
                         return null;
@@ -131,7 +147,48 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                           child: Text(member.name),
                         );
                       }).toList(),
-                      onChanged: (value) => setState(() => _selectedPayerId = value),
+                      onChanged: (value) =>
+                          setState(() => _selectedPayerId = value),
+                    ),
+                    const SizedBox(height: 24),
+
+                    //Lista de Checkboxes
+                    const Text(
+                      'Dividir por:',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: widget.trip.members.length,
+                      itemBuilder: (context, index) {
+                        final member = widget.trip.members[index];
+                        final isSelected = _selectedMemberIds.contains(
+                          member.id,
+                        );
+
+                        return CheckboxListTile(
+                          title: Text(member.name),
+                          value: isSelected,
+                          activeColor: Theme.of(context).colorScheme.primary,
+                          contentPadding: EdgeInsets.zero,
+                          controlAffinity: ListTileControlAffinity.leading,
+                          onChanged: (bool? checked) {
+                            setState(() {
+                              if (checked == true) {
+                                _selectedMemberIds.add(member.id);
+                              } else {
+                                _selectedMemberIds.remove(member.id);
+                              }
+                            });
+                          },
+                        );
+                      },
                     ),
                     const SizedBox(height: 24),
 
@@ -141,7 +198,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                       child: FilledButton.icon(
                         onPressed: _saveExpense,
                         icon: const Icon(Icons.save),
-                        label: const Text('Guardar Despesa', style: TextStyle(fontSize: 16)),
+                        label: const Text(
+                          'Guardar Despesa',
+                          style: TextStyle(fontSize: 16),
+                        ),
                       ),
                     ),
                   ],
