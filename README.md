@@ -17,8 +17,10 @@ SplitTrip is a full-stack group expense management system designed to track shar
 
 ## 🚀 Deployment & Local Setup
 
-\`\`\`bash
-# Run with Docker
+```bash
+# Build Docker image
 docker build -t splittrip-api ./backend
+
+# Run container locally
 docker run -p 8080:8080 splittrip-api
-\`\`\`
+```
