@@ -32,11 +32,94 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _loadDashboardData();
   }
 
+  void _showMembersModal(BuildContext context) {
+    if (_trip == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Membros do Grupo (${_trip!.members.length})',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const Divider(),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: _trip!.members.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final member = _trip!.members[index];
+                    final isCurrentUser = member.name == _currentMemberName;
+
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: CircleAvatar(
+                        backgroundColor: isCurrentUser
+                            ? Colors.teal
+                            : Colors.grey.shade300,
+                        foregroundColor: isCurrentUser
+                            ? Colors.white
+                            : Colors.black87,
+                        child: Text(
+                          member.name.isNotEmpty
+                              ? member.name[0].toUpperCase()
+                              : '?',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      title: Text(
+                        member.name,
+                        style: TextStyle(
+                          fontWeight: isCurrentUser
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
+                      ),
+                      trailing: isCurrentUser
+                          ? const Chip(
+                              label: Text('Tu', style: TextStyle(fontSize: 12)),
+                              backgroundColor: Colors.tealAccent,
+                              padding: EdgeInsets.zero,
+                            )
+                          : null,
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void _shareTripCode(String roomCode, String tripName) {
     Share.share(
       'Junta-te à viagem "$tripName" no SplitTrip!\n\n'
       'Código da sala: $roomCode\n\n'
-      'Abre no browser: https://app.netlify.com/drop (ou usa a app)',
+      'Abre no browser:  https://lambent-longma-a84c8b.netlify.app/  (ou usa a app)',
       subject: 'Código da Viagem SplitTrip',
     );
   }
@@ -67,9 +150,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao carregar dados: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro ao carregar dados: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -78,17 +161,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _logout() async {
     await SessionManager.logout();
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
-    );
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -97,6 +178,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: Text(_trip?.name ?? 'SplitTrip'),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.group),
+            tooltip: 'Ver Membros',
+            onPressed: () => _showMembersModal(context),
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: _logout,
@@ -146,10 +232,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       IconButton(
                         icon: const Icon(Icons.share, color: Colors.teal),
                         tooltip: 'Partilhar código',
-                        onPressed: () => _shareTripCode(
-                          _trip!.roomCode,
-                          _trip!.name,
-                        ),
+                        onPressed: () =>
+                            _shareTripCode(_trip!.roomCode, _trip!.name),
                       ),
                     ],
                   ),
@@ -182,7 +266,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 Icons.sync_alt,
                                 color: Colors.orange,
                               ),
-                              title: Text('${s.senderName} paga a ${s.receiverName}'),
+                              title: Text(
+                                '${s.senderName} paga a ${s.receiverName}',
+                              ),
                               trailing: Text(
                                 '${s.amount.toStringAsFixed(2)} €',
                                 style: const TextStyle(
