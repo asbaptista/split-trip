@@ -22,14 +22,14 @@ public class ExpenseSplit {
     @JsonIgnoreProperties({"trip"})
     private Member member;
 
-    private BigDecimal amountOwed;
+    private BigDecimal owedAmount;
 
     public ExpenseSplit() {}
 
-    public ExpenseSplit(Expense expense, Member member, BigDecimal amountOwed) {
+    public ExpenseSplit(Expense expense, Member member, BigDecimal owedAmount) {
         this.expense = expense;
         this.member = member;
-        this.amountOwed = amountOwed;
+        this.owedAmount = owedAmount;
     }
 
     public Long getId() { return id; }
@@ -41,6 +41,6 @@ public class ExpenseSplit {
     public Member getMember() { return member; }
     public void setMember(Member member) { this.member = member; }
 
-    public BigDecimal getAmountOwed() { return amountOwed; }
-    public void setAmountOwed(BigDecimal amountOwed) { this.amountOwed = amountOwed; }
+    public BigDecimal getOwedAmount() { return owedAmount; }
+    public void setOwedAmount(BigDecimal owedAmount) { this.owedAmount = owedAmount; }
 }
