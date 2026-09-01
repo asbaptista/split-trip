@@ -184,10 +184,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: CircleAvatar(
-                        backgroundColor:
-                            isCurrentUser ? Colors.teal : Colors.grey.shade300,
-                        foregroundColor:
-                            isCurrentUser ? Colors.white : Colors.black87,
+                        backgroundColor: isCurrentUser
+                            ? Colors.teal
+                            : Colors.grey.shade300,
+                        foregroundColor: isCurrentUser
+                            ? Colors.white
+                            : Colors.black87,
                         child: Text(
                           member.name.isNotEmpty
                               ? member.name[0].toUpperCase()
@@ -198,23 +200,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       title: Text(
                         member.name,
                         style: TextStyle(
-                          fontWeight:
-                              isCurrentUser
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
+                          fontWeight: isCurrentUser
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                         ),
                       ),
-                      trailing:
-                          isCurrentUser
-                              ? const Chip(
-                                label: Text(
-                                  'Tu',
-                                  style: TextStyle(fontSize: 12),
-                                ),
-                                backgroundColor: Colors.tealAccent,
-                                padding: EdgeInsets.zero,
-                              )
-                              : null,
+                      trailing: isCurrentUser
+                          ? const Chip(
+                              label: Text('Tu', style: TextStyle(fontSize: 12)),
+                              backgroundColor: Colors.tealAccent,
+                              padding: EdgeInsets.zero,
+                            )
+                          : null,
                     );
                   },
                 ),
@@ -314,7 +311,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       leading: const Icon(Icons.person, color: Colors.teal),
                       title: Text(split.member.name),
                       trailing: Text(
-                        '${split.amountOwed.toStringAsFixed(2)} €',
+                        '${split.owedAmount.toStringAsFixed(2)} €',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
@@ -407,11 +404,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
           final despesaAdicionada = await Navigator.of(context).push<bool>(
             MaterialPageRoute(
-              builder:
-                  (_) => AddExpenseScreen(
-                    trip: _trip!,
-                    currentMemberId: currentMemberId,
-                  ),
+              builder: (_) => AddExpenseScreen(
+                trip: _trip!,
+                currentMemberId: currentMemberId,
+              ),
             ),
           );
 
@@ -481,25 +477,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
     return Column(
-      children:
-          _settlements
-              .map(
-                (s) => Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.sync_alt, color: Colors.orange),
-                    title: Text('${s.senderName} paga a ${s.receiverName}'),
-                    trailing: Text(
-                      '${s.amount.toStringAsFixed(2)} €',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.orange,
-                      ),
-                    ),
+      children: _settlements
+          .map(
+            (s) => Card(
+              child: ListTile(
+                leading: const Icon(Icons.sync_alt, color: Colors.orange),
+                title: Text('${s.senderName} paga a ${s.receiverName}'),
+                trailing: Text(
+                  '${s.amount.toStringAsFixed(2)} €',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.orange,
                   ),
                 ),
-              )
-              .toList(),
+              ),
+            ),
+          )
+          .toList(),
     );
   }
 
@@ -513,36 +508,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
     return Column(
-      children:
-          _expenses
-              .map(
-                (e) => Card(
-                  child: ListTile(
-                    onTap: () => _showExpenseDetailsModal(e),
-                    leading: const CircleAvatar(
-                      backgroundColor: Colors.teal,
-                      child: Icon(Icons.receipt, color: Colors.white),
-                    ),
-                    title: Text(e.description),
-                    subtitle: Text('Pago por ${e.paidBy.name}'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '${e.totalAmount.toStringAsFixed(2)} €',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.chevron_right, color: Colors.grey),
-                      ],
-                    ),
-                  ),
+      children: _expenses
+          .map(
+            (e) => Card(
+              child: ListTile(
+                onTap: () => _showExpenseDetailsModal(e),
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.teal,
+                  child: Icon(Icons.receipt, color: Colors.white),
                 ),
-              )
-              .toList(),
+                title: Text(e.description),
+                subtitle: Text('Pago por ${e.paidBy.name}'),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${e.totalAmount.toStringAsFixed(2)} €',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.chevron_right, color: Colors.grey),
+                  ],
+                ),
+              ),
+            ),
+          )
+          .toList(),
     );
   }
 }
