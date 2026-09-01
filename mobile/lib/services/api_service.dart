@@ -116,4 +116,15 @@ class ApiService {
       throw Exception('Falha ao carregar instruções de pagamento.');
     }
   }
+
+Future<void> deleteExpense(int expenseId) async {
+  final response = await http.delete(
+    Uri.parse('$baseUrl/expenses/$expenseId'),
+    headers: {'Content-Type': 'application/json'},
+  );
+
+  if (response.statusCode != 200 && response.statusCode != 204) {
+    throw Exception('Falha ao eliminar despesa');
+  }
+}
 }
