@@ -1,26 +1,5 @@
 import 'member.dart';
-
-class ExpenseSplit {
-  final int id;
-  final Member member;
-  final double amountOwed;
-
-  ExpenseSplit({
-    required this.id,
-    required this.member,
-    required this.amountOwed,
-  });
-
-  factory ExpenseSplit.fromJson(Map<String, dynamic> json) {
-    return ExpenseSplit(
-      id: json['id'] != null ? (json['id'] as num).toInt() : 0,
-      member: json['member'] != null
-          ? Member.fromJson(json['member'] as Map<String, dynamic>)
-          : Member(id: 0, name: 'Desconhecido'),
-      amountOwed: (json['amountOwed'] as num?)?.toDouble() ?? 0.0,
-    );
-  }
-}
+import 'expense_split.dart';
 
 class Expense {
   final int id;
@@ -38,21 +17,15 @@ class Expense {
   });
 
   factory Expense.fromJson(Map<String, dynamic> json) {
-    var splitsList = <ExpenseSplit>[];
-    if (json['splits'] != null && json['splits'] is List) {
-      splitsList = (json['splits'] as List)
-          .map((i) => ExpenseSplit.fromJson(i as Map<String, dynamic>))
-          .toList();
-    }
-
     return Expense(
-      id: json['id'] != null ? (json['id'] as num).toInt() : 0,
-      description: json['description']?.toString() ?? '',
-      totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0.0,
-      paidBy: json['paidBy'] != null
-          ? Member.fromJson(json['paidBy'] as Map<String, dynamic>)
-          : Member(id: 0, name: 'Desconhecido'),
-      splits: splitsList,
+      id: json['id'] as int,
+      description: json['description'] as String,
+      totalAmount: (json['totalAmount'] as num).toDouble(),
+      paidBy: Member.fromJson(json['paidBy'] as Map<String, dynamic>),
+      splits: (json['splits'] as List<dynamic>?)
+              ?.map((e) => ExpenseSplit.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
   }
 }
