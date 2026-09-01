@@ -31,6 +31,9 @@ public class Expense {
     @OneToMany(mappedBy = "expense", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ExpenseSplit> splits;
 
+
+
+
     public Expense() {}
 
     public Long getId() { return id; }

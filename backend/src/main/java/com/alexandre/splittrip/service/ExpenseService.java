@@ -206,4 +206,11 @@ public class ExpenseService {
 
         return transfers;
     }
+
+    @Transactional
+    public void deleteExpense(Long expenseId) {
+        Expense expense = expenseRepository.findById(expenseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Despesa não encontrada"));
+        expenseRepository.delete(expense);
+    }   
 }

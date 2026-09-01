@@ -47,4 +47,10 @@ public class ExpenseController {
         return ResponseEntity.ok(settlements);
     }
 
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteExpense(@PathVariable Long id) {
+        expenseService.deleteExpense(id);
+    }
+
 }
