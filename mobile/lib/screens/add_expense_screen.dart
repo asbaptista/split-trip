@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../models/expense.dart';
 import '../models/trip.dart';
 
 class AddExpenseScreen extends StatefulWidget {
   final Trip trip;
-  final int currentMemberId; // Para selecionarmos logo quem está a usar a app
+  final int currentMemberId;
+  final Expense?
+  expenseToEdit; // Para selecionarmos logo quem está a usar a app
 
   const AddExpenseScreen({
     super.key,
     required this.trip,
     required this.currentMemberId,
+    this.expenseToEdit,
   });
 
   @override
@@ -23,22 +27,40 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final _descriptionController = TextEditingController();
   final _amountController = TextEditingController();
 
-  int? _selectedPayerId;
-  List<int> _selectedMemberIds = [];
+  late int _selectedPayerId;
+  final Set<int> _selectedMemberIds = {};
   bool _isLoading = false;
+
+  bool get _isEditing => widget.expenseToEdit != null;
 
   @override
   void initState() {
     super.initState();
-    // Por defeito, quem está a usar a app é quem pagou a conta
-    _selectedPayerId = widget.currentMemberId;
-    //Por defeito, seleciona TODOS os membros da viagem
-    _selectedMemberIds = widget.trip.members.map((m) => m.id).toList();
+    if (_isEditing) {
+      final expense = widget.expenseToEdit!;
+      _descriptionController.text = expense.description;
+      _amountController.text = expense.totalAmount.toStringAsFixed(2);
+      _selectedPayerId = expense.paidBy.id;
+      for (final split in expense.splits) {
+        _selectedMemberIds.add(split.member.id);
+      }
+    } else {
+      _selectedPayerId = widget.currentMemberId;
+      for (final member in widget.trip.members) {
+        _selectedMemberIds.add(member.id);
+      }
+    }
   }
 
-  Future<void> _saveExpense() async {
+  @override
+  void dispose() {
+    _descriptionController.dispose();
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitExpense() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedPayerId == null) return;
 
     if (_selectedMemberIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -52,27 +74,57 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       return;
     }
 
+    final double? amount = double.tryParse(
+      _amountController.text.replaceAll(',', '.'),
+    );
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Insere um valor válido superior a zero.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
-      final description = _descriptionController.text.trim();
-      // Substituir vírgulas por pontos para evitar erros a converter para double
-      final amountText = _amountController.text.replaceAll(',', '.');
-      final amount = double.parse(amountText);
-
-      await _apiService.addExpense(
-        widget.trip.id,
-        _selectedPayerId!,
-        description,
-        amount,
-        _selectedMemberIds,
-      );
+      if (_isEditing) {
+        await _apiService.updateExpense(
+          expenseId: widget.expenseToEdit!.id,
+          description: _descriptionController.text.trim(),
+          totalAmount: amount,
+          paidById: _selectedPayerId,
+          splitAmongMemberIds: _selectedMemberIds.toList(),
+        );
+      } else {
+        await _apiService.addExpense(
+          widget.trip.id,
+          _descriptionController.text.trim(),
+          amount,
+          _selectedPayerId,
+          _selectedMemberIds.toList(),
+        );
+      }
 
       if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _isEditing
+                ? 'Despesa atualizada com sucesso!'
+                : 'Despesa criada com sucesso!',
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
 
       // Se correu tudo bem, fecha o ecrã e devolve "true" para o Dashboard saber que tem de atualizar
       Navigator.of(context).pop(true);
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Erro ao guardar despesa: $e'),
@@ -87,7 +139,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Nova Despesa'), centerTitle: true),
+      appBar: AppBar(
+        title: Text(_isEditing ? 'Editar Despesa' : 'Nova Despesa'),
+        backgroundColor: Colors.teal,
+        foregroundColor: Colors.white,
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -105,8 +161,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.description),
                       ),
-                      validator: (value) =>
-                          value!.isEmpty ? 'Insere uma descrição' : null,
+                      validator: (value) => value == null ||
+                          value.trim().isEmpty ? 'Insere uma descrição' : null,
                     ),
                     const SizedBox(height: 16),
 
@@ -121,23 +177,23 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.euro),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty)
-                          return 'Insere o valor';
-                        if (double.tryParse(value.replaceAll(',', '.')) ==
-                            null) {
-                          return 'Valor inválido';
-                        }
-                        return null;
-                      },
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty
+                          ? 'Insere o montante'
+                          : null,
                     ),
-                    const SizedBox(height: 16),
-
-                    // Quem pagou? (Dropdown)
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Quem pagou?',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     DropdownButtonFormField<int>(
                       value: _selectedPayerId,
                       decoration: const InputDecoration(
-                        labelText: 'Quem pagou?',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.person),
                       ),
@@ -147,60 +203,97 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                           child: Text(member.name),
                         );
                       }).toList(),
-                      onChanged: (value) =>
-                          setState(() => _selectedPayerId = value),
-                    ),
-                    const SizedBox(height: 24),
-
-                    //Lista de Checkboxes
-                    const Text(
-                      'Dividir por:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: widget.trip.members.length,
-                      itemBuilder: (context, index) {
-                        final member = widget.trip.members[index];
-                        final isSelected = _selectedMemberIds.contains(
-                          member.id,
-                        );
-
-                        return CheckboxListTile(
-                          title: Text(member.name),
-                          value: isSelected,
-                          activeColor: Theme.of(context).colorScheme.primary,
-                          contentPadding: EdgeInsets.zero,
-                          controlAffinity: ListTileControlAffinity.leading,
-                          onChanged: (bool? checked) {
-                            setState(() {
-                              if (checked == true) {
-                                _selectedMemberIds.add(member.id);
-                              } else {
-                                _selectedMemberIds.remove(member.id);
-                              }
-                            });
-                          },
-                        );
+                      onChanged: (val) {
+                        if (val != null) setState(() => _selectedPayerId = val);
                       },
                     ),
                     const SizedBox(height: 24),
 
-                    // Botão Guardar
+                    // 13. ALTERAÇÃO: Adição de uma barra superior com o botão "Selecionar Todos / Desmarcar Todos" para facilitar a gestão dos membros.
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Dividir entre quem?',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              if (_selectedMemberIds.length ==
+                                  widget.trip.members.length) {
+                                _selectedMemberIds.clear();
+                              } else {
+                                _selectedMemberIds.clear();
+                                for (final m in widget.trip.members) {
+                                  _selectedMemberIds.add(m.id);
+                                }
+                              }
+                            });
+                          },
+                          child: Text(
+                            _selectedMemberIds.length ==
+                                    widget.trip.members.length
+                                ? 'Desmarcar Todos'
+                                : 'Selecionar Todos',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    // 14. ALTERAÇÃO: A lista de seleção de membros agora está envolvida por um `Card` com divisores entre itens (`ListView.separated`) para um design visualmente mais organizado.
+                    Card(
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: widget.trip.members.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final member = widget.trip.members[index];
+                          final isChecked = _selectedMemberIds.contains(
+                            member.id,
+                          );
+                          return CheckboxListTile(
+                            title: Text(member.name),
+                            value: isChecked,
+                            activeColor: Colors.teal,
+                            onChanged: (bool? val) {
+                              setState(() {
+                                if (val == true) {
+                                  _selectedMemberIds.add(member.id);
+                                } else {
+                                  _selectedMemberIds.remove(member.id);
+                                }
+                              });
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+
+                    // 15. ALTERAÇÃO: Substituição do `FilledButton.icon` por um `ElevatedButton` estilizado e com texto dinâmico ("Gravar Alterações" vs "Adicionar Despesa").
                     SizedBox(
+                      width: double.infinity,
                       height: 50,
-                      child: FilledButton.icon(
-                        onPressed: _saveExpense,
-                        icon: const Icon(Icons.save),
-                        label: const Text(
-                          'Guardar Despesa',
-                          style: TextStyle(fontSize: 16),
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.teal,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: _submitExpense,
+                        child: Text(
+                          _isEditing
+                              ? 'Gravar Alterações'
+                              : 'Adicionar Despesa',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -208,6 +301,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 ),
               ),
             ),
-    );
+    ); 
   }
 }

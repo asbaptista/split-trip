@@ -54,9 +54,9 @@ class ApiService {
 
   Future<Expense> addExpense(
     int tripId,
-    int paidById,
     String description,
     double totalAmount,
+    int paidById,
     List<int> splitAmongMemberIds,
   ) async {
     final response = await http.post(
@@ -117,14 +117,42 @@ class ApiService {
     }
   }
 
-Future<void> deleteExpense(int expenseId) async {
-  final response = await http.delete(
-    Uri.parse('$baseUrl/expenses/$expenseId'),
-    headers: {'Content-Type': 'application/json'},
-  );
+  Future<void> deleteExpense(int expenseId) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/expenses/$expenseId'),
+      headers: {'Content-Type': 'application/json'},
+    );
 
-  if (response.statusCode != 200 && response.statusCode != 204) {
-    throw Exception('Falha ao eliminar despesa');
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception('Falha ao eliminar despesa');
+    }
   }
-}
+
+  Future<Expense> updateExpense({
+    required int expenseId,
+    required String description,
+    required double totalAmount,
+    required int paidById,
+    required List<int> splitAmongMemberIds,
+  }) async {
+    final url = Uri.parse('$baseUrl/api/expenses/$expenseId');
+    final response = await http.put(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'description': description,
+        'totalAmount': totalAmount,
+        'paidById': paidById,
+        'splitAmongMemberIds': splitAmongMemberIds,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return Expense.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
+    } else {
+      throw Exception('Falha ao atualizar despesa: ${response.body}');
+    }
+  }
 }

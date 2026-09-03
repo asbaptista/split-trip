@@ -322,6 +322,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
               const SizedBox(height: 24),
+              // Botão Editar Despesa
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text(
+                   'Editar Despesa',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  onPressed: () async {
+                    if (_trip == null) return;
+                    final session = await SessionManager.getSession();
+                    final currentMemberId = (session?['memberId'] ?? 0) as int;
+
+                    if (!ctx.mounted) return;
+                    Navigator.of(ctx).pop(); // Fecha o bottom sheet de detalhes
+
+                    final expenseUpdated = await Navigator.of(context)
+                        .push<bool>(
+                          MaterialPageRoute(
+                            builder: (_) => AddExpenseScreen(
+                              trip: _trip!,
+                              currentMemberId: currentMemberId,
+                              expenseToEdit: expense,
+                            ),
+                          ),
+                        );
+
+                    if (expenseUpdated == true) {
+                      _loadDashboardData();
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Botão Eliminar Despesa
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
