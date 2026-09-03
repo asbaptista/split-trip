@@ -102,6 +102,67 @@ public class ExpenseService {
         return savedExpense;
     }
 
+    @Transactional
+    public Expense updateExpense(Long expenseId, AddExpenseRequest request) {
+        if (request.getSplitAmongMemberIds() == null || request.getSplitAmongMemberIds().isEmpty()) {
+            throw new ResourceNotFoundException("A despesa tem de ser dividida por pelo menos uma pessoa.");
+        }
+
+        // 1. Procurar a despesa existente
+        Expense expense = expenseRepository.findById(expenseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Despesa não encontrada"));
+
+        // 2. Validar se o pagador existe
+        Member paidBy = memberRepository.findById(request.getPaidById())
+                .orElseThrow(() -> new ResourceNotFoundException("Membro pagador não encontrado"));
+
+        // 3. Atualizar dados principais
+        expense.setDescription(request.getDescription());
+        expense.setTotalAmount(request.getTotalAmount());
+        expense.setPaidBy(paidBy);
+
+        // 4. Validar os novos membros da divisão
+        List<Member> involvedMembers = memberRepository.findAllById(request.getSplitAmongMemberIds());
+        if (involvedMembers.size() != request.getSplitAmongMemberIds().size()) {
+            throw new ResourceNotFoundException("Um ou mais membros selecionados não foram encontrados.");
+        }
+
+        // 5. Limpar divisões antigas (o orphanRemoval = true trata de eliminar no PostgreSQL)
+        if (expense.getSplits() == null) {
+            expense.setSplits(new ArrayList<>());
+        } else {
+            expense.getSplits().clear();
+        }
+
+        // 6. Recalcular a matemática dos cêntimos
+        BigDecimal numberOfPeople = new BigDecimal(involvedMembers.size());
+        BigDecimal baseSplit = request.getTotalAmount().divide(numberOfPeople, 2, RoundingMode.FLOOR);
+        BigDecimal remainder = request.getTotalAmount().subtract(baseSplit.multiply(numberOfPeople));
+
+        boolean payerIsInvolved = involvedMembers.stream()
+                .anyMatch(m -> m.getId().equals(paidBy.getId()));
+
+        for (int i = 0; i < involvedMembers.size(); i++) {
+            Member member = involvedMembers.get(i);
+
+            boolean getsRemainder = payerIsInvolved
+                    ? member.getId().equals(paidBy.getId())
+                    : (i == 0);
+
+            BigDecimal amountForThisMember = getsRemainder ? baseSplit.add(remainder) : baseSplit;
+
+            ExpenseSplit split = new ExpenseSplit();
+            split.setExpense(expense);
+            split.setMember(member);
+            split.setOwedAmount(amountForThisMember);
+
+            expense.getSplits().add(split);
+        }
+
+        // 7. Guardar e devolver a despesa atualizada com os novos splits
+        return expenseRepository.save(expense);
+    }
+
     public List<Expense> getExpensesByTrip(Long tripId) {
         return expenseRepository.findByTripIdOrderByExpenseDateDesc(tripId);
     }

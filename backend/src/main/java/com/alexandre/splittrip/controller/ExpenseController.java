@@ -22,16 +22,14 @@ public class ExpenseController {
     }
 
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public Expense addExpense(@RequestBody AddExpenseRequest request) {
-        return expenseService.addExpense(request);
+    public ResponseEntity<Expense> addExpense(@RequestBody AddExpenseRequest request) {
+        Expense expense = expenseService.addExpense(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(expense);
     }
 
     @GetMapping("/trip/{tripId}")
     public ResponseEntity<List<Expense>> getTripExpenses(@PathVariable Long tripId) {
-        List<Expense> expenses = expenseService.getExpensesByTrip(tripId);
-        return ResponseEntity.ok(expenses);
-
+        return ResponseEntity.ok(expenseService.getExpensesByTrip(tripId));
     }
 
     @GetMapping("/trip/{tripId}/balances")
@@ -39,7 +37,6 @@ public class ExpenseController {
         List<MemberBalanceResponse> balances = expenseService.calculateBalances(tripId);
         return ResponseEntity.ok(balances);
     }
-
 
     @GetMapping("/trip/{tripId}/settlements")
     public ResponseEntity<List<TransferInstruction>> getTripSettlements(@PathVariable Long tripId) {
@@ -53,4 +50,11 @@ public class ExpenseController {
         expenseService.deleteExpense(id);
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<Expense> updateExpense(
+            @PathVariable Long id,
+            @RequestBody AddExpenseRequest request) {
+        Expense updatedExpense = expenseService.updateExpense(id, request);
+        return ResponseEntity.ok(updatedExpense);
+    }
 }
